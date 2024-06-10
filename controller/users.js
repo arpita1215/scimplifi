@@ -9,10 +9,10 @@ const {
   clearCookie,
 } = require("../utils/tokenUtil");
 
-const multer = require('multer')
-const { STORAGE } = require('../config/Storage.multer')
-const { CloudinaryStorage } = require('multer-storage-cloudinary'); 
-const cloudinary = require('../config/cloudinaryConfig');
+const multer = require("multer");
+const { STORAGE } = require("../config/Storage.multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("../config/cloudinaryConfig");
 
 router.post("/signup", async (req, res) => {
   try {
@@ -87,105 +87,50 @@ router.post("/login", async (req, res) => {
   });
 });
 
-router.get(
-  "/current",
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+});
+
+// Initialize multer with Cloudinary storage
+const upload = multer({ storage: storage });
+
+router.post(
+  "/upload-picture",
+  upload.single("image"),
   passport.authenticate("user", {
     session: false,
   }),
   async (req, res) => {
     try {
-      const profile = await USERS.findById(req.user.id);
-      res.status(200).json(profile);
-    } catch {
-      res.status(400).json({
-        success: false,
+      console.log(req.file);
+      console.log(req.user);
+      await USERS.findByIdAndUpdate(req.user.id, { profilePic: req.file.path });
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(400).json({
+        message: error.message,
       });
     }
   }
 );
 
-
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  
-});
-
-// Initialize multer with Cloudinary storage
-const upload = multer({ storage: storage });
-
-
-router.post(
-  '/upload-picture',
-  upload.single('image'),
+router.get(
+  "/view-picture",
   passport.authenticate("user", {
     session: false,
   }),
   async (req, res) => {
-      try {
-          console.log(req.file)
-          console.log(req.user)
-          await USERS.findByIdAndUpdate(req.user.id,{profilePic:req.file.path})
-          return res.json({success:true})
-      } catch (error) {
-          return res.status(400).json({
-              message: error.message,
-          })
-       }
-    }
-)
+    try {
+      const profileImage = await USERS.findById(req.user.id, { profilePic: 1 });
 
-// router.post("/upload-picture", verifyJWT, upload.single("picture"), async (req, res) => {
-//   try {
-//     const user = await USERS.findById(req.user.id);
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     // Assuming the picture is stored in req.file.path by Cloudinary
-//     user.profilePic = req.file.path;
-//     await user.save();
-
-//     return res.json({
-//       success: true,
-//       message: "Picture uploaded successfully",
-//       profilePic: req.file.path,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// });
-
-
-
-
-
-router.get('/view-picture',
-  passport.authenticate("user", {
-    session: false,
-  }),
-  async (req, res) => {
-      try {
-          const profileImage = await USERS.findById(req.user.id,{profilePic:1})
-          
-          return res.json({success:true, profileImage})
-      } catch (error) {
-          return res.status(400).json({
-              message: error.message,
-          })
-       }
-    }
-)
-
-
-
+      return res.json({ success: true, profileImage });
+    } catch (error) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+  }
+);
 
 router.get("/logout", function (req, res) {
   clearCookie(res);
@@ -193,11 +138,5 @@ router.get("/logout", function (req, res) {
     success: true,
   });
 });
-
-
-
-
-
-
 
 module.exports = router;
